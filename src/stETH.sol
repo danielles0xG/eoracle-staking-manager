@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 // @notice Ownable Mintable ERC20
 contract stETH is ERC20{
     address public owner;
+    event TransferOwner(address oldOwner,address newOwner);
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Unauthorized");
@@ -23,6 +24,7 @@ contract stETH is ERC20{
     }
 
     function transferOwnership(address newOwner) external onlyOwner{
+        emit TransferOwner(owner,newOwner);
         owner = newOwner;
     }
 }

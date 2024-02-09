@@ -22,7 +22,7 @@ contract StakeManager is IStakeManager, AccessControlUpgradeable,UUPSUpgradeable
         uint256 stakedAt; // time of un-registration
         uint256 stakeAmt; // total staked amount
     }
-    mapping(address staker => Staker) stakers;
+    mapping(address staker => Staker) public stakers;
 
     /* ACCESS ROLES */
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
@@ -32,7 +32,7 @@ contract StakeManager is IStakeManager, AccessControlUpgradeable,UUPSUpgradeable
     error InsufficientDeposit();
     error InvalidStakeMinAmt();
     error Unauthorized();
-    error RegistrationDeposit();
+    error UnsifficientRegistrationDeposit();
     error AlreadyResgistered();
     error RegistrationWaitTimeNotElapsed();
     error UnregistrationError();
@@ -49,13 +49,14 @@ contract StakeManager is IStakeManager, AccessControlUpgradeable,UUPSUpgradeable
         _;
     }
 
-    function initialize(uint256 _rewardsPerBlock, address _operator) external initializer {
+    function initialize(uint256 _rewardsPerBlock, address _operator, address _tokenReward) external initializer {
         __AccessControl_init();
         _grantRole(ADMIN_ROLE, _msgSender());
         _setRoleAdmin(OPERATOR_ROLE,ADMIN_ROLE);
         _setRoleAdmin(STAKER_ROLE,ADMIN_ROLE);
         _grantRole(OPERATOR_ROLE, _operator);
         rewardsPerBlock = _rewardsPerBlock;
+        tokenReward = IstETH(_tokenReward);
     }
 
     /**
@@ -72,42 +73,44 @@ contract StakeManager is IStakeManager, AccessControlUpgradeable,UUPSUpgradeable
      * @dev Allows an account to register as a staker.
      */
     function register() external payable {
-        if(stakers[msg.sender].registeredAt > 0) revert AlreadyResgistered();
-        if(msg.value < registrationDepositAmount) revert RegistrationDeposit();
-        stakers[msg.sender].registeredAt = block.timestamp;
+        if(stakers[_msgSender()].registeredAt > 0) revert AlreadyResgistered();
+        if(msg.value < registrationDepositAmount) revert UnsifficientRegistrationDeposit();
+        stakers[_msgSender()].registeredAt = block.timestamp;
+        _grantRole(STAKER_ROLE,_msgSender());
     }
 
     /**
      * @dev Allows registered stakers to stake ether into the contract.
      */
     function stake() external payable override updateRewardPool onlyRole(STAKER_ROLE) {
-        if(stakers[msg.sender].registeredAt + registrationWaitTime < block.timestamp) revert RegistrationWaitTimeNotElapsed();
+        if(stakers[_msgSender()].registeredAt + registrationWaitTime < block.timestamp) revert RegistrationWaitTimeNotElapsed();
         uint256 stakedAmt = msg.value;
         if(stakedAmt == 0) revert InvalidStakeMinAmt();
-        stakers[msg.sender].stakeAmt += stakedAmt;
+        stakers[_msgSender()].stakeAmt += stakedAmt;
         totalStaked += stakedAmt;
-        stakers[msg.sender].stakedAt = block.timestamp;
-        tokenReward.mint(msg.sender,stakedAmt); // only to represent stake deposit
+        stakers[_msgSender()].stakedAt = block.timestamp;
+        tokenReward.mint(_msgSender(),stakedAmt); // only to represent stake depositx
     }
 
     /**
      * @dev Allows a registered staker to unregister and exit the staking system.
      */
     function unregister() override external onlyRole(STAKER_ROLE){
-        if(stakers[msg.sender].stakedAt + registrationWaitTime < block.timestamp) revert RegistrationWaitTimeNotElapsed();
+        if(stakers[_msgSender()].stakedAt + registrationWaitTime < block.timestamp) revert RegistrationWaitTimeNotElapsed();
         (bool success,) = _msgSender().call{value: registrationDepositAmount}('');
         if(!success) revert UnregistrationError();
         unstake();
-        delete stakers[msg.sender];
+        _revokeRole(STAKER_ROLE, _msgSender());
+        delete stakers[_msgSender()];
     }
 
     /**
      * @dev Allows registered stakers to unstake their ether from the contract.
      */
     function unstake() public override updateRewardPool onlyRole(STAKER_ROLE){
-        uint256 _stakeAmt = stakers[msg.sender].stakeAmt;
+        uint256 _stakeAmt = stakers[_msgSender()].stakeAmt;
         uint256 userRewards = _ethToRewards(_stakeAmt);
-        tokenReward.burn(msg.sender,userRewards);
+        tokenReward.burn(_msgSender(),userRewards);
         (bool succ,)=_msgSender().call{value: _stakeAmt + _rewardsToEth(userRewards) }('');
         if(!succ) revert TransferFailed();
     }
@@ -123,7 +126,7 @@ contract StakeManager is IStakeManager, AccessControlUpgradeable,UUPSUpgradeable
         totalStaked -= amount;
     }
 
-    function _ethToRewards(uint256 _amount) internal returns(uint256){
+    function _ethToRewards(uint256 _amount) internal view returns(uint256){
         uint256 rewardPool = tokenReward.totalSupply();
         uint256 stakingPool = totalStaked + _calculateRewards();
         if(rewardPool > 0 && stakingPool > 0){
@@ -131,7 +134,7 @@ contract StakeManager is IStakeManager, AccessControlUpgradeable,UUPSUpgradeable
         }
         return _amount;
     }
-    function _rewardsToEth(uint256 _amount) internal returns(uint256){
+    function _rewardsToEth(uint256 _amount) internal view returns(uint256){
         uint256 rewardPool = tokenReward.totalSupply();
         uint256 stakingPool = totalStaked + _calculateRewards();
         return rewardPool > 0 ?  stakingPool * _amount / rewardPool : 0;
