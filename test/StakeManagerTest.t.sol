@@ -28,7 +28,7 @@ contract StakeManagerTest is Test {
         stakeManager.initialize(REWARDS_RATE,operator,address(rewardsToken));
         rewardsToken.transferOwnership(address(stakeManager));
 
-        // vm.warp(block.timestamp + 200);
+        vm.warp(block.timestamp + REGISTRATION_WAIT_TIME * 4); // set initial clock to one month
     }
     function test_deployment() public {
         assert(address(stakeManager) != address(0));
@@ -53,11 +53,15 @@ contract StakeManagerTest is Test {
         assert(stakeManager.hasRole(stakeManager.STAKER_ROLE(), STAKER_1.addr));
         assertEq(address(stakeManager).balance,REGISTRATION_DEPOSIT);
     }
-    function test_unregister() public {
+    function test_unregister_without_staking() public {
         Vm.Wallet memory STAKER_2 = vm.createWallet("STAKER_2");
         _setConfiguration(REGISTRATION_DEPOSIT,REGISTRATION_WAIT_TIME);
         _register(STAKER_2,REGISTRATION_DEPOSIT);
+        uint256 instanceBalanceB4unregister = address(stakeManager).balance;
+        vm.warp(block.timestamp + stakeManager.registrationWaitTime());
         _unregister(STAKER_2);
+        assertFalse(stakeManager.hasRole(stakeManager.STAKER_ROLE(), STAKER_2.addr));
+        assertEq(address(stakeManager).balance, instanceBalanceB4unregister - REGISTRATION_DEPOSIT);
     }
 
     function test_stake() public {
