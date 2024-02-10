@@ -1,19 +1,48 @@
-## Foundry
+## StakinManager
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+** Contract to manage staking deposits, auto compounding of interest and mints token to represent deposits and rewards **
 
-Foundry consists of:
+Contracts
+    - StakerManager.sol 
+        - configuration: 
+            - rewardsPerBlock,operator address,rewards token address, unstake period,rewardWeeksCycle.
+    - ERC20 reward token
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+Actors
+    - ADMIN_ROLE
+    - OPERATOR_ROLE
+    - STAKER_ROLE
 
-## Documentation
+Properties
 
-https://book.getfoundry.sh/
+- Initial staking configuration only accessed by admin or operator
+- Aditional staking configuration only accessed by admin or operator
+- Initial Operator role defined on configuration by admin
+- Registration is open to anyone, only one active registration is allowed per address
+- Unregistration is open to registered stakers only and after registrationWaitTime elapsed
+- Unregistration will unstake user stakes and revoke the STAKER_ROLE from address
+- Staking is open only to registered stakers after registrationWaitTime elapsed
+- Staking sets staker's accounting and mints a 1:1 reward token to the amount staked
+- Staking updates the staking pool adding generated rewards for the period
+- Unstake burns users reward token total balance and unstakes staker's Eth
+- Claim Rewards is callable by anyone with current or past staked amount balance in the contract
+- Claim, user stops accumulating rewards once he unstakes, but can claim the days covered in the cycle
+- Slash substracts amount from staker stakes, only by admin or operator
+## Install
+````
+forge install
+````
 
-## Usage
+## Test
+````
+forge test
+````
+
+## Coverage
+````
+forge coverage
+````
+## Deploy
 
 ### Build
 
@@ -21,47 +50,10 @@ https://book.getfoundry.sh/
 $ forge build
 ```
 
-### Test
-
-```shell
-$ forge test
-```
-
-### Format
-
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
 ### Deploy
 
 ```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
+$ forge script script/Deploy.s.sol:Deploy --rpc-url <your_rpc_url> --private-key <your_private_key>
+
 ```
 
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
-# eoracle-staking-manager

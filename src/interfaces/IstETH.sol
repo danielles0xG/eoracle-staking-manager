@@ -74,7 +74,8 @@ interface IERC20 {
     function transferFrom(address from, address to, uint256 value) external returns (bool);
 }
 
-interface IstETH is IERC20{
+interface IstETH is IERC20 {
     function mint(address account, uint256 amount) external;
-	function burn(address account, uint256 amount) external;
+    function transferOwnership(address newOwner) external;
+    function burn(address account, uint256 amount) external;
 }
