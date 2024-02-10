@@ -1,19 +1,24 @@
-## StakinManager
+# StakinManager
 
-** Contract to manage staking deposits, auto compounding of interest and mints token to represent deposits and rewards **
+**Contract to manage staking deposits, auto compounding of interest and mints token to represent deposits and rewards**
 
-Contracts
-    - StakerManager.sol 
-        - configuration: 
-            - rewardsPerBlock,operator address,rewards token address, unstake period,rewardWeeksCycle.
+## Contracts
+    - StakerManager.sol
+    - Configuration: 
+            - rewardsPerBlock
+            - operator address
+            - rewards token address
+            - unstake period
+            - rewards duration cycle in weeks
+            
     - ERC20 reward token
 
-Actors
+## Actors
     - ADMIN_ROLE
     - OPERATOR_ROLE
     - STAKER_ROLE
 
-Properties
+## Properties
 
 - Initial staking configuration only accessed by admin or operator
 - Aditional staking configuration only accessed by admin or operator
